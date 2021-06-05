@@ -13,12 +13,9 @@ var delay = 5;
 //   });
 // }
 
-function wait(ms) {
-  var start = Date.now(),
-    now = start;
-  while (now - start < ms) {
-    now = Date.now();
-  }
+// sleep
+function timeout(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 var port = 4730 + Number(process.argv[2]);
@@ -32,7 +29,7 @@ worker.addFunction("sum", function (job) {
     var sum = 0;
     for (var j = 0; j < temp.length; j++) {
       sum += temp[j][1];
-      wait(delay);
+      timeout(delay);
       console.log(
         `SUM : ${i + 1}/${input.length} ${j + 1}/${
           temp.length
@@ -54,7 +51,7 @@ worker.addFunction("count", function (job) {
   }
   for (var i = 0; i < input.length; i++) {
     output[input[i][1]][1]++;
-    wait(delay);
+    timeout(delay);
     console.log(
       `COUNT ${i + 1}/${input.length} --- ${delay}ms per 1 operation`
     );

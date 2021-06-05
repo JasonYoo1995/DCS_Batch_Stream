@@ -34,6 +34,7 @@ var output = [];
 function timeout(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
 function setMode() {
   var arg = Number(process.argv[2]);
   if (arg == 0) batchMode = true;
@@ -186,6 +187,7 @@ async function executeBatch() {
     executeCount();
     await timeout(1); // make CPU idle (context switch for callback function)
   }
+
   console.log("PROGRAM EXIT");
 }
 
