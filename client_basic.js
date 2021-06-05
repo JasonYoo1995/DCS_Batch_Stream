@@ -3,7 +3,7 @@ var Gearman = require("abraxas");
 var batchMode = false;
 var streamMode = false;
 
-var nodeNum = 4;
+var nodeNum = 3;
 var score = [];
 
 var taskNum = 0;
@@ -42,9 +42,10 @@ function setMode() {
 
 function setValues() {
   var studentNum = 31;
-  var problemNum = 3;
+  var problemNum = 3; // must be equal or less than 25
   var quotient;
   var remainder;
+  var inputPerBatch = 7; // for stream mode
 
   for (let i = 0; i < studentNum; i++) {
     var temp = [];
@@ -81,7 +82,6 @@ function setValues() {
     //     27       7     7 7 7        (6)          4
     //     28       7     7 7 7 7                   4
     //     29       7     7 7 7 7      (1)          5
-    var inputPerBatch = 7;
     quotient = Math.floor(studentNum / inputPerBatch);
     remainder = studentNum % inputPerBatch;
     taskNum = Math.floor((studentNum - 1) / inputPerBatch) + 1;
