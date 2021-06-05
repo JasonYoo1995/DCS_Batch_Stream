@@ -3,6 +3,8 @@ var Gearman = require("abraxas");
 var batchMode = false;
 var streamMode = false;
 
+var studentNum = 31;
+var problemNum = 3; // must be equal or less than 25
 var nodeNum = 3;
 var score = [];
 
@@ -42,8 +44,6 @@ function setMode() {
 }
 
 function setValues() {
-  var studentNum = 31;
-  var problemNum = 3; // must be equal or less than 25
   var quotient;
   var remainder;
   var inputPerBatch = 7; // for stream mode
@@ -188,7 +188,18 @@ async function executeBatch() {
     await timeout(1); // make CPU idle (context switch for callback function)
   }
 
+  verifyResult();
   console.log("PROGRAM EXIT");
+}
+
+function verifyResult() {
+  var sum = 0;
+  for (var i = 0; i < output.length; i++) {
+    sum += output[i][1];
+  }
+  console.log("---------------VERIFY RESULT---------------");
+  console.log(`studentNum = ${studentNum} / sum of output = ${sum}`);
+  console.log(studentNum == sum ? "PASS" : "FAIL");
 }
 
 function program() {
