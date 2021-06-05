@@ -3,7 +3,7 @@ var Gearman = require("abraxas");
 var batchMode = false;
 var streamMode = false;
 
-var nodeNum = 3;
+var nodeNum = 4;
 var score = [];
 
 var taskNum = 0;
@@ -96,9 +96,9 @@ function setValues() {
     }
   }
 
-  // console.log(score);
-  // console.log("----------------------------------------");
-  // for (var i = 0; i < sumInput.length; i++) console.log(sumInput[i]);
+  console.log(score);
+  console.log("----------------------------------------");
+  for (var i = 0; i < sumInput.length; i++) console.log(sumInput[i]);
 }
 
 function getRandomScore() {
@@ -113,6 +113,7 @@ function initializeOutput() {
 
 function executeSum() {
   if (sumInput.length == 0) return;
+
   // load-balancing strategy : round-robin
   let client = Gearman.Client.connect({
     servers: ["127.0.0.1:" + (sumRRpointer + 4730)],
@@ -120,6 +121,7 @@ function executeSum() {
   });
   sumRRpointer++;
   sumRRpointer %= nodeNum; // control index
+
   // execute
   let input = sumInput[0];
   sumInput.splice(0, 1); // remove item on index 0
@@ -132,7 +134,7 @@ function executeSum() {
       let time = endTime - startTime;
       console.log(`------------SUM : ${time}ms elapsed------------`);
       countInput.push(sum);
-      sumOutputNum++;
+      sumOutputNum++; // for batch mode
     });
 }
 
@@ -147,6 +149,7 @@ function executeCount() {
   });
   countRRpointer++;
   countRRpointer %= nodeNum;
+
   // execute
   let input = countInput[0];
   countInput.splice(0, 1); // remove item on index 0
@@ -158,12 +161,15 @@ function executeCount() {
       let endTime = Date.now();
       let time = endTime - startTime;
       console.log(`------------COUNT : ${time}ms elapsed------------`);
+
       /* update output */
       for (let k = 0; k <= 100; k++) {
         output[k][1] += count[k][1];
       }
+
       /* count finish */
       finish--;
+
       /* check final output */
       if (finish == 0) {
         console.log("---------------FINAL OUTPUT---------------");
@@ -174,19 +180,20 @@ function executeCount() {
 
 async function executeBatch() {
   finish = taskNum;
-  // all jobs are completed if finish is 0
+
   while (finish != 0) {
     executeSum();
     executeCount();
-    await timeout(1); // prevent busy waiting (make idle for callback function)
+    await timeout(1); // make CPU idle (context switch for callback function)
   }
   console.log("PROGRAM EXIT");
 }
 
-setMode();
+function program() {
+  setMode();
+  setValues();
+  initializeOutput();
+  executeBatch();
+}
 
-setValues();
-
-initializeOutput();
-
-executeBatch();
+program();

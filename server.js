@@ -1,2 +1,3 @@
 var Gearman = require("abraxas");
-Gearman.Server.listen({ port: 4730 });
+var port = 4730 + Number(process.argv[2]);
+Gearman.Server.listen({ port: port });
