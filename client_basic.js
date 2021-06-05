@@ -4,8 +4,8 @@ var batchMode = false;
 var streamMode = false;
 
 var studentNum = 31;
-var problemNum = 3; // must be equal or less than 25
-var nodeNum = 3;
+var problemNum = 25; // must be equal or less than 25
+var nodeNum = 4;
 var score = [];
 
 var taskNum = 0;
@@ -13,7 +13,7 @@ var taskNum = 0;
 var sumInput = [];
 var countInput = [];
 
-var sumOutputNum = 0;
+var sumOutputNum = 0; // batch mode
 
 var sumRRpointer = 0;
 var countRRpointer = 0;
@@ -48,6 +48,7 @@ function setValues() {
   var remainder;
   var inputPerBatch = 7; // for stream mode
 
+  // initialize job
   for (let i = 0; i < studentNum; i++) {
     var temp = [];
     for (let j = 0; j < problemNum; j++) {
@@ -56,8 +57,9 @@ function setValues() {
     score.push(temp);
   }
 
+  // divide job into task, and then push task into sum queue
   if (batchMode) {
-    // studentNum   tasknum = nodeNum  quotient    (quotient+remainder)
+    // studentNum   taskNum = nodeNum  quotient    (quotient+remainder)
     //     29               3            9 9               (9+2)
     //     30               3           10 10              (10+0)
     //     31               3           10 10              (10+1)
@@ -179,7 +181,7 @@ function executeCount() {
     });
 }
 
-async function executeBatch() {
+async function execute() {
   finish = taskNum;
 
   while (finish != 0) {
@@ -206,7 +208,7 @@ function program() {
   setMode();
   setValues();
   initializeOutput();
-  executeBatch();
+  execute();
 }
 
 program();
