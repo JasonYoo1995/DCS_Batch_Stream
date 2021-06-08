@@ -1,14 +1,20 @@
 var Gearman = require("abraxas");
 
 var batchMode = false;
-var streamMode = false;
+var streamMode = true;
 
 var studentNum = 31;
 var problemNum = 25; // must be equal or less than 25
 var nodeNum = 4;
+
+var serverList = []; // List of Connected Servers
+var portList = [];
+
 var score = [];
 
 var taskNum = 0;
+
+var reassign = false; // Option For Reassign
 
 var sumInput = [];
 var countInput = [];
@@ -21,194 +27,255 @@ var countRRpointer = 0;
 var finish;
 var output = [];
 
-// function runShellCommand(command) {
-//   var exec = require("child_process").exec;
-//   exec(command, function (error, stdout, stderr) {
-//     console.log("stdout: " + stdout);
-//     console.log("stderr: " + stderr);
-//     if (error !== null) {
-//       console.log("exec error: " + error);
-//     }
-//   });
-// }
-
 // sleep
 function timeout(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function setMode() {
-  var arg = Number(process.argv[2]);
-  if (arg == 0) batchMode = true;
-  else if (arg == 1) streamMode = true;
+    var arg = Number(process.argv[2]);
+    if (arg == 0) batchMode = true;
+    else if (arg == 1) streamMode = true;
+}
+
+function connectServers() {
+    for (let i = 0; i < nodeNum; i++) {
+        let client = Gearman.Client.connect({
+            servers: ["127.0.0.1:" + (i + 4730)],
+            defaultEncoding: "utf8",
+        });
+        client.on('connect', function (client) {
+            serverList.push(client); // Add to ServerList
+            portList.push(i);
+        });
+    }
 }
 
 function setValues() {
-  var quotient;
-  var remainder;
-  var inputPerBatch = 7; // for stream mode
+    var quotient;
+    var remainder;
+    var inputPerBatch = 7; // for stream mode
 
-  // initialize job
-  for (let i = 0; i < studentNum; i++) {
-    var temp = [];
-    for (let j = 0; j < problemNum; j++) {
-      temp.push([i, getRandomScore()]); // [student ID, score]
-    }
-    score.push(temp);
-  }
-
-  // divide job into task, and then push task into sum queue
-  if (batchMode) {
-    // studentNum   taskNum = nodeNum  quotient    (quotient+remainder)
-    //     29               3            9 9               (9+2)
-    //     30               3           10 10              (10+0)
-    //     31               3           10 10              (10+1)
-    quotient = Math.floor(studentNum / nodeNum); // 10
-    remainder = studentNum % nodeNum;
-    taskNum = nodeNum;
-
-    for (var i = 0; i < taskNum; i++) {
-      var input = [];
-      for (var j = 0; j < quotient; j++) {
-        input.push(score[i * quotient + j]);
-      }
-      // last loop
-      if (i == taskNum - 1) {
-        for (var j = 0; j < remainder; j++) {
-          input.push(score[quotient * nodeNum + j]);
+    // initialize job
+    for (let i = 0; i < studentNum; i++) {
+        var temp = [];
+        for (let j = 0; j < problemNum; j++) {
+            temp.push([i, getRandomScore()]); // [student ID, score]
         }
-      }
-      sumInput.push(input);
+        score.push(temp);
     }
-  } else if (streamMode) {
-    // studentNum  IPB    quotient (remainder)   tasknum
-    //     27       7     7 7 7        (6)          4
-    //     28       7     7 7 7 7                   4
-    //     29       7     7 7 7 7      (1)          5
-    quotient = Math.floor(studentNum / inputPerBatch);
-    remainder = studentNum % inputPerBatch;
-    taskNum = Math.floor((studentNum - 1) / inputPerBatch) + 1;
 
-    for (var i = 0; i <= quotient; i++) {
-      var input = [];
-      for (var j = 0; j < inputPerBatch; j++) {
-        if (i == quotient && j == remainder) break;
-        input.push(score[i * inputPerBatch + j]);
-      }
-      if (input.length > 0) sumInput.push(input);
+    // divide job into task, and then push task into sum queue
+    if (batchMode) {
+        // studentNum   taskNum = nodeNum  quotient    (quotient+remainder)
+        //     29               3            9 9               (9+2)
+        //     30               3           10 10              (10+0)
+        //     31               3           10 10              (10+1)
+        quotient = Math.floor(studentNum / nodeNum); // 10
+        remainder = studentNum % nodeNum;
+        taskNum = nodeNum;
+
+        for (var i = 0; i < taskNum; i++) {
+            var input = [];
+            for (var j = 0; j < quotient; j++) {
+                input.push(score[i * quotient + j]);
+            }
+            // last loop
+            if (i == taskNum - 1) {
+                for (var j = 0; j < remainder; j++) {
+                    input.push(score[quotient * nodeNum + j]);
+                }
+            }
+            sumInput.push(input);
+        }
+    } else if (streamMode) {
+        // studentNum  IPB    quotient (remainder)   tasknum
+        //     27       7     7 7 7        (6)          4
+        //     28       7     7 7 7 7                   4
+        //     29       7     7 7 7 7      (1)          5
+        quotient = Math.floor(studentNum / inputPerBatch);
+        remainder = studentNum % inputPerBatch;
+        taskNum = Math.floor((studentNum - 1) / inputPerBatch) + 1;
+
+        for (var i = 0; i <= quotient; i++) {
+            var input = [];
+            for (var j = 0; j < inputPerBatch; j++) {
+                if (i == quotient && j == remainder) break;
+                input.push(score[i * inputPerBatch + j]);
+            }
+            if (input.length > 0) sumInput.push(input);
+        }
     }
-  }
 
-  console.log(score);
-  console.log("----------------------------------------");
-  for (var i = 0; i < sumInput.length; i++) console.log(sumInput[i]);
+    console.log(score);
+    console.log("----------------------------------------");
+    for (var i = 0; i < sumInput.length; i++) console.log(sumInput[i]);
 }
 
 function getRandomScore() {
-  return Math.floor(Math.random() * 5);
+    return Math.floor(Math.random() * 5);
 }
 
 function initializeOutput() {
-  for (var i = 0; i <= 100; i++) {
-    output.push([i, 0]);
-  }
+    for (var i = 0; i <= 100; i++) {
+        output.push([i, 0]);
+    }
 }
 
 function executeSum() {
-  if (sumInput.length == 0) return;
+    if (sumInput.length == 0) return;
 
-  // load-balancing strategy : round-robin
-  let client = Gearman.Client.connect({
-    servers: ["127.0.0.1:" + (sumRRpointer + 4730)],
-    defaultEncoding: "utf8",
-  });
-  sumRRpointer++;
-  sumRRpointer %= nodeNum; // control index
+    let client = serverList[sumRRpointer];
+    sumRRpointer++;
+    sumRRpointer %= serverList.length; // control index
 
-  // execute
-  let input = sumInput[0];
-  sumInput.splice(0, 1); // remove item on index 0
-  let startTime = Date.now();
-  client
-    .submitJob("sum", JSON.stringify([input, startTime]))
-    .then(function (result) {
-      let [sum, startTime] = JSON.parse(result);
-      let endTime = Date.now();
-      let time = endTime - startTime;
-      console.log(`------------SUM : ${time}ms elapsed------------`);
-      countInput.push(sum);
-      sumOutputNum++; // for batch mode
+    // execute
+    let input = sumInput[0];
+    sumInput.splice(0, 1); // remove item on index 0
+    let startTime = Date.now();
+
+    client
+        .submitJob("sum", JSON.stringify([input, startTime]))
+        .then(function (result) {
+            let [sum, startTime] = JSON.parse(result);
+            let endTime = Date.now();
+            let time = endTime - startTime;
+            console.log(`------------SUM : ${time}ms elapsed------------`);
+            countInput.push(sum);
+            console.log(sum);
+            sumOutputNum++; // for batch mode
+        });
+
+    client.on('disconnect', function (client) {
+        let portNum = portList[serverList.indexOf(client)];
+        client.disconnect();
+
+        serverList.splice(serverList.indexOf(client), 1); // Remove From List
+        portList.splice(serverList.indexOf(client), 1);
+
+        console.log('[ERROR] Fail From Server ' + portNum);
+
+        if (reassign) {
+            console.log('Will Remove From Server List');
+            sumRRpointer %= serverList.length;
+            sumInput.push(input);
+        } else {
+            console.log('Will try to Reconnect');
+
+            let client = Gearman.Client.connect({
+                servers: ["127.0.0.1:" + (portNum + 4730)],
+                defaultEncoding: "utf8",
+            });
+            client.on('connect', function (client) {
+                console.log('Reconnected to Server ' + portNum);
+                serverList.push(client); // Add to ServerList
+                portList.push(portNum);
+                sumRRpointer = serverList.length - 1;
+                sumInput.push(input);
+            });
+        }
     });
 }
 
 function executeCount() {
-  if (batchMode && sumOutputNum < taskNum) return;
-  if (countInput.length == 0) return;
+    if (batchMode && sumOutputNum < taskNum) return;
+    if (countInput.length == 0) return;
 
-  // load-balancing strategy : round-robin
-  let client = Gearman.Client.connect({
-    servers: ["127.0.0.1:" + (countRRpointer + 4730)],
-    defaultEncoding: "utf8",
-  });
-  countRRpointer++;
-  countRRpointer %= nodeNum;
+    client = serverList[countRRpointer];
+    client.removeAllListeners();
 
-  // execute
-  let input = countInput[0];
-  countInput.splice(0, 1); // remove item on index 0
-  let startTime = Date.now();
-  client
-    .submitJob("count", JSON.stringify([input, startTime]))
-    .then(function (result) {
-      let [count, startTime] = JSON.parse(result);
-      let endTime = Date.now();
-      let time = endTime - startTime;
-      console.log(`------------COUNT : ${time}ms elapsed------------`);
+    countRRpointer++;
+    countRRpointer %= serverList.length;
 
-      /* update output */
-      for (let k = 0; k <= 100; k++) {
-        output[k][1] += count[k][1];
-      }
+    // execute
+    let input = countInput[0];
+    countInput.splice(0, 1); // remove item on index 0
+    let startTime = Date.now();
+    client
+        .submitJob("count", JSON.stringify([input, startTime]))
+        .then(function (result) {
+            let [count, startTime] = JSON.parse(result);
+            let endTime = Date.now();
+            let time = endTime - startTime;
+            console.log(`------------COUNT : ${time}ms elapsed------------`);
 
-      /* count finish */
-      finish--;
+            /* update output */
+            for (let k = 0; k <= 100; k++) {
+                output[k][1] += count[k][1];
+            }
+            console.log(count);
+            /* count finish */
+            finish--;
 
-      /* check final output */
-      if (finish == 0) {
-        console.log("---------------FINAL OUTPUT---------------");
-        console.log(output);
-      }
+            /* check final output */
+            if (finish == 0) {
+                console.log("---------------FINAL OUTPUT---------------");
+                console.log(output);
+            }
+        });
+
+    client.on('disconnect', function (client) {
+        let portNum = portList[serverList.indexOf(client)];
+        client.disconnect();
+
+        serverList.splice(serverList.indexOf(client), 1); // Remove From List
+        portList.splice(serverList.indexOf(client), 1);
+
+        console.log('[ERROR] Fail From Server ' + portNum);
+
+        if (reassign) {
+            console.log('Will Remove From Server List');
+            countRRpointer %= serverList.length;
+            countInput.push(input);
+        } else {
+            console.log('Will try to Reconnect');
+
+            let client = Gearman.Client.connect({
+                servers: ["127.0.0.1:" + (portNum + 4730)],
+                defaultEncoding: "utf8",
+            });
+            client.on('connect', function (client) {
+                console.log('Reconnected to Server ' + portNum);
+                serverList.push(client); // Add to ServerList
+                portList.push(portNum);
+                countRRpointer = serverList.length - 1;
+                countInput.push(input);
+            });
+        }
     });
 }
 
 async function execute() {
-  finish = taskNum;
+    finish = taskNum;
 
-  while (finish != 0) {
-    executeSum();
-    executeCount();
-    await timeout(1); // make CPU idle (context switch for callback function)
-  }
+    while (finish != 0) {
+        executeSum();
+        executeCount();
+        await timeout(1); // make CPU idle (context switch for callback function)
+    }
 
-  verifyResult();
-  console.log("PROGRAM EXIT");
+    verifyResult();
+    console.log("PROGRAM EXIT");
 }
 
 function verifyResult() {
-  var sum = 0;
-  for (var i = 0; i < output.length; i++) {
-    sum += output[i][1];
-  }
-  console.log("---------------VERIFY RESULT---------------");
-  console.log(`studentNum = ${studentNum} / sum of output = ${sum}`);
-  console.log(studentNum == sum ? "PASS" : "FAIL");
+    var sum = 0;
+    for (var i = 0; i < output.length; i++) {
+        sum += output[i][1];
+    }
+    console.log("---------------VERIFY RESULT---------------");
+    console.log(`studentNum = ${studentNum} / sum of output = ${sum}`);
+    console.log(studentNum == sum ? "PASS" : "FAIL");
 }
 
-function program() {
-  setMode();
-  setValues();
-  initializeOutput();
-  execute();
+async function program() {
+    setMode();
+    connectServers();
+    while (serverList.length < nodeNum) await timeout(1);
+    console.log(serverList.length);
+    setValues();
+    initializeOutput();
+    execute();
 }
 
 program();
