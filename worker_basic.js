@@ -1,7 +1,6 @@
 var gearmanode = require("gearmanode");
 var exec = require("child_process").exec;
-//var delay = 5;
-var delay = 100;
+var delay = 5;
 var die = 0;
 
 // sleep
@@ -49,7 +48,7 @@ async function countFunction(job) {
         if (die)
             return;
         output[input[i][1]][1]++;
-        await timeout(1000);
+        await timeout(delay);
         console.log(
             `COUNT ${i + 1}/${input.length} --- ${delay}ms per 1 operation`
         );
