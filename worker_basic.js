@@ -59,7 +59,7 @@ async function countFunction(job) {
 }
 
 // Worker FT
-function disconnectFunction() {
+async function disconnectFunction() {
     die = true;
     console.log('[ERROR] Server Died. Trying to Restart Server');
     let command = 'pm2 start -f ' + __dirname + '/server.js -- ' + process.argv[2];
@@ -77,4 +77,6 @@ function disconnectFunction() {
             console.log("exec error: " + error);
         }
     });
+    // await timeout(1000);
+    // die = false;
 }

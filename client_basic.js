@@ -72,10 +72,8 @@ function setValues() {
     // divide job into task, and then push task into sum queue
     if (AVmode == 2) {
         taskNum = nodeNum;
-        sumInput.push(score);
-        sumInput.push(score);
-        sumInput.push(score);
-        sumInput.push(score);
+        for (let i = 0; i < nodeNum; i++)
+            sumInput.push(score);
     }
     else if (batchMode) {
         // studentNum   taskNum = nodeNum  quotient    (quotient+remainder)
@@ -190,6 +188,7 @@ function executeSum() {
             if (AVmode == 2 && (countInput.length == serverList.length)) {
                 let sumOut = [];
                 let tmp;
+                console.log('------Voting------');
                 for (let i = 0; i < countInput[0].length; i++) { // i번째 학생
                     let scoreCount = new Map();
                     let studentId = countInput[0][i][0];
@@ -202,6 +201,8 @@ function executeSum() {
                             scoreCount.set(countInput[j][i][1], 1);
                     }
                     scoreCount = [...scoreCount.entries()].sort();
+                    console.log(i + 'th Student');
+                    console.log(scoreCount);
                     sumOut.push([studentId, scoreCount[scoreCount.length - 1][0]]);
                 }
                 countInput = [];
@@ -313,7 +314,7 @@ function executeCount() {
 
 async function execute() {
     finish = taskNum;
-
+    let runningTime = Date.now();
     while (finish != 0) {
         executeSum();
         executeCount();
@@ -322,6 +323,7 @@ async function execute() {
 
     verifyResult();
     console.log("PROGRAM EXIT");
+    console.log('----Time Taken in Total : ' + (Date.now() - runningTime) / 1000 + 's----');
 }
 
 function verifyResult() {
