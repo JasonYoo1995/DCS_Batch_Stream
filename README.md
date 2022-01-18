@@ -9,7 +9,7 @@
     - 3가지 Fault Tolerance 기법 구현
 - **제작 문서**
     
-    [Fault Tolerant한 분산 병렬 처리 문서](https://www.notion.so/Fault-Tolerant-b6e89a5c48884e1e99e3e8680df82626)
+    [Fault Tolerant한 분산 병렬 처리 문서](https://jasonyoo95.notion.site/Fault-Tolerant-b6e89a5c48884e1e99e3e8680df82626)
     
 - **어려웠던 점 및 해결 방법**
     - 문제1
